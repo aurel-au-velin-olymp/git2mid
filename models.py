@@ -21,7 +21,7 @@ from nnAudio import Spectrogram
 
 class PyTorch(nn.Module):
 
-    def __init__(self, drop_last=True, roll=False, return_cqt=False, output=None):
+    def __init__(self, roll=False, return_cqt=False, output=None, drop='last'):
         super(PyTorch, self).__init__()
 
         self.cqt = Spectrogram.CQT2010v2(
@@ -36,7 +36,7 @@ class PyTorch(nn.Module):
         )
         
         self.roll = roll
-        self.drop_last = drop_last
+        self.drop = drop
         self.return_cqt = return_cqt
         self.output = output
 
@@ -78,10 +78,12 @@ class PyTorch(nn.Module):
         
         pred = torch.sigmoid((x))
         
-        if self.drop_last:
-            x = x[:,:,:-1]
-        else:
-            x[:,:,1:]
+        if self.drop=='last':
+            pred = pred[:,:,:-1]
+        if self.drop=='first':
+            pred[:,:,1:]
+        if self.drop is None:
+            pred = pred
             
         if self.roll:
             pred = torch.roll(pred, -40, dims=1)
@@ -90,7 +92,7 @@ class PyTorch(nn.Module):
             if self.return_cqt:
                 return pred, cqt
             else:
-                return x
+                return pred
         else:
             
             output_dict = {
@@ -108,14 +110,14 @@ class PyTorch(nn.Module):
 
 class PyTorchv1():
 
-    def __init__(self, weights='pytorch_cqt_12.pt', drop_last=True, roll=False, return_cqt=False, output=None):
+    def __init__(self, weights='pytorch_cqt_12.pt', drop='last', roll=False, return_cqt=False, output=None):
         #super(Net, self).__init__()
 
-        self.drop_last = drop_last
+        self.drop = drop
         self.roll = roll
         self.return_cqt = return_cqt
         self.output = output
-        self.model = PyTorch(drop_last=self.drop_last, roll=self.roll, return_cqt=self.return_cqt, output=self.output)
+        self.model = PyTorch(drop=self.drop, roll=self.roll, return_cqt=self.return_cqt, output=self.output)
         self.model.cuda()
         self.model.eval()
         self.model.load_state_dict(torch.load(weights), strict=False)
