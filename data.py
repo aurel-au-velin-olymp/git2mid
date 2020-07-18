@@ -10,7 +10,7 @@ import scipy.stats as stats
 import textdistance
 from pysndfx import AudioEffectsChain
 
-from git2mid.core.config import config
+from git2mid.config import config
 
 
 class LabelCoderDict:
