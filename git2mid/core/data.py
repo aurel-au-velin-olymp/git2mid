@@ -10,7 +10,7 @@ import scipy.stats as stats
 import textdistance
 from pysndfx import AudioEffectsChain
 
-import config
+from git2mid.core.config import config
 
 
 class LabelCoderDict:
@@ -279,7 +279,8 @@ def notes_to_chroma(notes):
 class FishmanGuitarDatabase():
 
     def __init__(self,
-                 path= os.path.join(config.GIT2MID_DB_ROOT, 'fishman/single_notes/single_notes.pkl'),
+                 db_cache=config.GIT2MID_DB_ROOT,
+                 db = 'single_notes.pkl',
                  sr=44100,
                  preload_audio=False,
                  ):
@@ -293,11 +294,12 @@ class FishmanGuitarDatabase():
         
         '''
         import pandas as pd
-
-        self.df = pd.read_pickle(path)
+        self.db_cache = db_cache
+        self.db = db
+        self.df = pd.read_pickle(os.path.join(self.db_cache, 'fishman/single_notes/', self.db))
 
         # clean with blacklist
-        self.blacklist = pd.read_table(os.path.join(config.GIT2MID_DB_ROOT, 'fishman/single_notes/blacklist.txt'), header=None,
+        self.blacklist = pd.read_table(os.path.join(self.db_cache, 'fishman/single_notes/blacklist.txt'), header=None,
                                        index_col=0).index
         self.df = self.df.drop(self.blacklist)
 
@@ -309,12 +311,12 @@ class FishmanGuitarDatabase():
             new_path = '/'.join((new_root, filename))
             return new_path
 
-        self.df.index = [generate_new_path(x, path) for x in self.df.index]
+        self.df.index = [generate_new_path(x, os.path.join(self.db_cache, 'fishman/single_notes/', self.db)) for x in self.df.index]
 
         # chord shapes to use for the chords 
-        self.chords = pd.read_json('data/chords/chord_classes.json')
+        self.chords = pd.read_json(os.path.join(self.db_cache, 'chords/chord_classes.json'))
         self.chords['poly'] = [len(x) for x in self.chords.midi_notes]
-        self.top_chords = pd.read_json('data/chords/top_chords.json')
+        self.top_chords = pd.read_json(os.path.join(self.db_cache, 'chords/top_chords.json'))
         self.top_chords['poly'] = [len(x) for x in self.top_chords.midi_notes]
 
         self.top_chords['chroma'] = [notes_to_chroma(note) for note in librosa.midi_to_note(self.top_chords.midi_notes)]
@@ -424,13 +426,16 @@ class FishmanGuitarDatabase():
                  augment=False,
                  correct_pitch_prob=0,
                  augment_pitch=False,
+                 use_offset_augmentation=True,
                  pitch_range=10,
                  pitch_lib=None
                  ):
 
         if np.random.rand(1) <= correct_pitch_prob:
 
-            note_offset = np.random.randint(3)  # nehmen falsche note die nachher auf richtigen Pitch wird
+            if use_offset_augmentation:
+                note_offset = np.random.randint(3)  # nehmen falsche note die nachher auf richtigen Pitch wird
+            else: note_offset = 0
             if self.verbose: print('note_offset', note_offset)
             file, offset, f0 = self.get_file(
                 np.max((note + note_offset, 40)),
@@ -558,6 +563,7 @@ class FishmanGuitarDatabase():
                      correct_pitch_prob=0,
                      pitch_range=10,
                      augment_pitch=True,
+                     use_offset_augmentation=True,
                      pitch_lib=None
                      ):
 
@@ -615,7 +621,8 @@ class FishmanGuitarDatabase():
                 augment=augment,
                 augment_pitch=augment_pitch,
                 pitch_range=pitch_range,
-                pitch_lib=pitch_lib
+                pitch_lib=pitch_lib,
+                use_offset_augmentation=use_offset_augmentation
             )
 
             output[i] = audio * amplitude_
