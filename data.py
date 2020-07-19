@@ -684,7 +684,7 @@ class FishmanGuitarDatabase():
 
         if use_sequence:
 
-            return audio, piano_roll, piano_roll_energy
+            return audio, piano_roll, piano_roll_energy, output
 
         else:
 
